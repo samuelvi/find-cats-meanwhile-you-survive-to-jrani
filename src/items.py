@@ -90,9 +90,33 @@ class Stair(pygame.sprite.Sprite):
                 pygame.draw.line(self.image, (150, 150, 150), (0, 50 - i * 5), (50, 50 - i * 5), 2)
 
 class Door(pygame.sprite.Sprite):
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, width, height, direction='vertical'):
         super().__init__()
-        self.image = pygame.Surface([width, height])
-        self.image.fill((112, 77, 48)) # Color madera oscura para la puerta
+        self.image = pygame.Surface([width, height], pygame.SRCALPHA)
+        DOOR_COLOR = (112, 77, 48)  # Dark wood color
+        HANDLE_COLOR = (200, 200, 200) # Silver/grey handle
+
+        # Draw door base
+        pygame.draw.rect(self.image, DOOR_COLOR, (0, 0, width, height))
+
+        # Add some paneling detail
+        if direction == 'vertical':
+            pygame.draw.rect(self.image, (DOOR_COLOR[0]-20, DOOR_COLOR[1]-20, DOOR_COLOR[2]-20), (width * 0.1, height * 0.1, width * 0.8, height * 0.8), 2)
+            pygame.draw.rect(self.image, (DOOR_COLOR[0]-20, DOOR_COLOR[1]-20, DOOR_COLOR[2]-20), (width * 0.2, height * 0.2, width * 0.6, height * 0.6), 2)
+            # Draw handle
+            pygame.draw.circle(self.image, HANDLE_COLOR, (int(width * 0.8), int(height * 0.5)), 5)
+        else: # horizontal
+            pygame.draw.rect(self.image, (DOOR_COLOR[0]-20, DOOR_COLOR[1]-20, DOOR_COLOR[2]-20), (width * 0.1, height * 0.1, width * 0.8, height * 0.8), 2)
+            pygame.draw.rect(self.image, (DOOR_COLOR[0]-20, DOOR_COLOR[1]-20, DOOR_COLOR[2]-20), (width * 0.2, height * 0.2, width * 0.6, height * 0.6), 2)
+            # Draw handle
+            pygame.draw.circle(self.image, HANDLE_COLOR, (int(width * 0.5), int(height * 0.8)), 5)
+
+
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
+
+class TransitionDoor(Door):
+    def __init__(self, x, y, width, height, goes_to_floor, target_pos, direction='vertical'):
+        super().__init__(x, y, width, height, direction)
+        self.goes_to_floor = goes_to_floor
+        self.target_pos = target_pos

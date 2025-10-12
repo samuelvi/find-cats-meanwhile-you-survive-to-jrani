@@ -29,19 +29,17 @@ class Level:
         self.walls = []
         for wall_pos in wall_layout:
             self.walls.append(pygame.Rect(wall_pos))
+        self.wall_texture = pygame.image.load("assets/wall_texture.png").convert_alpha()
 
     def draw(self, surface):
-        WALL_BASE_COLOR = (100, 80, 70)      # Un color piedra/ladrillo
         WALL_HIGHLIGHT = (130, 110, 100)   # Borde superior iluminado
         WALL_SHADOW = (50, 40, 35)         # Sombra inferior
 
         for wall in self.walls:
-            # Color base de la pared
-            pygame.draw.rect(surface, WALL_BASE_COLOR, wall)
-
-            # Simulación de textura de ladrillo con líneas horizontales
-            for y in range(wall.top, wall.bottom, 15):
-                pygame.draw.line(surface, WALL_SHADOW, (wall.left, y), (wall.right, y), 1)
+            # Blit the wall texture
+            for x in range(wall.left, wall.right, self.wall_texture.get_width()):
+                for y in range(wall.top, wall.bottom, self.wall_texture.get_height()):
+                    surface.blit(self.wall_texture, (x, y))
 
             # Efecto 3D con bordes claros y oscuros
             pygame.draw.line(surface, WALL_HIGHLIGHT, wall.topleft, wall.topright, 2)

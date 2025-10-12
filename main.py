@@ -3,11 +3,12 @@ import sys
 import random
 from src.player import Player
 from src.level import Level, LEVEL_1_WALLS, LEVEL_2_WALLS, LEVEL_3_WALLS
-from src.items import Cat, Key, Platform, Stair, Door
+from src.items import Cat, Key, Platform, Door, TransitionDoor
 from src.enemy import Enemy
 from src.ui import Button
 from src.sound_manager import SoundManager
 from src.furniture import Bed, Sofa, Drawer
+from src.decoration import Painting, Rug, Window
 
 # --- Constantes ---
 SCREEN_WIDTH = 800
@@ -25,12 +26,14 @@ class Game:
     def __init__(self, difficulty): # Acepta la dificultad
         print("Game: __init__ started")
         pygame.init()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
         pygame.display.set_caption("Find Cats and Survive Jrani")
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
         self.running = True
         self.fullscreen = False
+        self.screen_width, self.screen_height = SCREEN_WIDTH, SCREEN_HEIGHT
+        self.game_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 
         self.sound_manager = SoundManager()
 
@@ -47,7 +50,9 @@ class Game:
         self.current_floor = 1
 
         self.furniture_by_floor = {}
+        self.decorations_by_floor = {}
 
+        self.floor_texture = pygame.image.load("assets/floor_texture.png").convert()
         self.floor_surface = self._create_floor_surface()
         self.setup_floor_objects()
         print("Game: __init__ finished")
@@ -55,21 +60,11 @@ class Game:
     def _create_floor_surface(self):
         """Crea una superficie que simula un suelo de madera."""
         floor = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        # Color base oscuro
-        floor.fill((54, 35, 20))
         
-        PLANK_WIDTH = 40
-        plank_colors = [(84, 55, 30), (94, 65, 40)]
-        
-        for x in range(0, SCREEN_WIDTH, PLANK_WIDTH):
-            # Elige un tono para el tablón
-            color = plank_colors[(x // PLANK_WIDTH) % 2]
-            plank_rect = pygame.Rect(x, 0, PLANK_WIDTH, SCREEN_HEIGHT)
-            pygame.draw.rect(floor, color, plank_rect)
-            
-            # Dibuja una línea oscura para separar los tablones
-            if x > 0:
-                pygame.draw.line(floor, (44, 25, 10), (x, 0), (x, SCREEN_HEIGHT), 1)
+        # Blit the floor texture repeatedly
+        for x in range(0, SCREEN_WIDTH, self.floor_texture.get_width()):
+            for y in range(0, SCREEN_HEIGHT, self.floor_texture.get_height()):
+                floor.blit(self.floor_texture, (x, y))
         return floor
 
     def _find_random_valid_spot(self, floor_num, sprite_size=(24, 24)):
@@ -100,10 +95,10 @@ class Game:
 
         # Escaleras por piso, indicando la dirección
         self.stairs_by_floor = {
-            1: [Stair(720, 280, goes_to_floor=2, target_pos=(101, 280), direction='up')],
-            2: [Stair(50, 280, goes_to_floor=1, target_pos=(689, 280), direction='down'),
-                Stair(720, 520, goes_to_floor=3, target_pos=(101, 30), direction='up')],
-            3: [Stair(50, 30, goes_to_floor=2, target_pos=(689, 520), direction='down')]
+            1: [TransitionDoor(720, 280, 50, 50, goes_to_floor=2, target_pos=(101, 280), direction='vertical')],
+            2: [TransitionDoor(50, 280, 50, 50, goes_to_floor=1, target_pos=(689, 280), direction='vertical'),
+                TransitionDoor(720, 520, 50, 50, goes_to_floor=3, target_pos=(101, 30), direction='vertical')],
+            3: [TransitionDoor(50, 30, 50, 50, goes_to_floor=2, target_pos=(689, 520), direction='vertical')]
         }
         
         # Plataforma (solo en el primer piso)
@@ -130,7 +125,7 @@ class Game:
         # Jrani por piso
         self.enemies_by_floor = {
             1: [Enemy(100, 100)],
-            2: [],
+            2: [Enemy(400, 300)],
             3: [Enemy(700, 100)]
         }
 
@@ -138,6 +133,12 @@ class Game:
             1: [Bed(200, 400), Sofa(500, 400), Drawer(150, 100)],
             2: [Sofa(200, 100), Drawer(600, 400)],
             3: [Bed(300, 200), Sofa(500, 200)]
+        }
+
+        self.decorations_by_floor = {
+            1: [Painting(200, 15), Painting(400, 15), Rug(300, 300), Window(600, 15)],
+            2: [Painting(200, 15), Rug(500, 400), Window(450, 15)],
+            3: [Painting(200, 15), Painting(600, 15), Rug(200, 400), Window(400, 510)]
         }
 
         print(f"Enemies by floor AFTER POPULATION: {self.enemies_by_floor}") # Debug print
@@ -163,6 +164,7 @@ class Game:
         self.stairs = pygame.sprite.Group(*self.stairs_by_floor.get(self.current_floor, []))
         self.doors = pygame.sprite.Group(*self.doors_by_floor.get(self.current_floor, []))
         self.furniture = pygame.sprite.Group(*self.furniture_by_floor.get(self.current_floor, []))
+        self.decorations = pygame.sprite.Group(*self.decorations_by_floor.get(self.current_floor, []))
 
         self.all_sprites.add(self.cats, self.enemies, self.stairs, self.doors, self.furniture)
         
@@ -197,13 +199,17 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            if event.type == pygame.VIDEORESIZE:
+                self.screen_width, self.screen_height = event.size
+                if not self.fullscreen: # Only resize if not in fullscreen
+                    self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.RESIZABLE)
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     self.fullscreen = not self.fullscreen
                     if self.fullscreen:
-                        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
+                        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
                     else:
-                        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+                        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.RESIZABLE)
 
     def update(self):
         current_level_walls = self.levels[self.current_floor].walls + [f.rect for f in self.furniture]
@@ -263,24 +269,47 @@ class Game:
             pygame.time.wait(1000)
 
     def draw(self):
-        self.screen.blit(self.floor_surface, (0, 0))
-        self.levels[self.current_floor].draw(self.screen)
-        self.all_sprites.draw(self.screen)
+        self.game_surface.blit(self.floor_surface, (0, 0))
+        self.levels[self.current_floor].draw(self.game_surface)
+        
+        # Draw shadows for decorations
+        for sprite in self.decorations:
+            shadow_surface = pygame.Surface(sprite.image.get_size(), pygame.SRCALPHA)
+            shadow_surface.fill((0, 0, 0, 100)) # Semi-transparent black
+            self.game_surface.blit(shadow_surface, (sprite.rect.x + 5, sprite.rect.y + 5))
+
+        self.decorations.draw(self.game_surface)
+
+        # Draw shadows for all_sprites (excluding player, as player shadow might be handled differently or not needed)
+        # For simplicity, I will draw shadows for all sprites in all_sprites group
+        for sprite in self.all_sprites:
+            # Skip player for now, or if player has its own shadow logic
+            if sprite == self.player:
+                continue
+            shadow_surface = pygame.Surface(sprite.image.get_size(), pygame.SRCALPHA)
+            shadow_surface.fill((0, 0, 0, 100)) # Semi-transparent black
+            self.game_surface.blit(shadow_surface, (sprite.rect.x + 5, sprite.rect.y + 5))
+
+        self.all_sprites.draw(self.game_surface)
 
         # UI
         lives_text = self.font.render(f'Vidas: {self.player_lives}', True, (255, 255, 255))
         cats_text = self.font.render(f'Gatos: {self.cats_collected}/{self.total_cats}', True, (255, 255, 255))
         floor_text = self.font.render(f'Piso: {self.current_floor}', True, (255, 255, 255))
         
-        self.screen.blit(lives_text, (15, 15))
-        self.screen.blit(cats_text, (15, 50))
-        self.screen.blit(floor_text, (SCREEN_WIDTH - 100, 15))
+        self.game_surface.blit(lives_text, (15, 15))
+        self.game_surface.blit(cats_text, (15, 50))
+        self.game_surface.blit(floor_text, (SCREEN_WIDTH - 100, 15))
+
+        # Scale and blit the game_surface to the actual screen
+        scaled_surface = pygame.transform.scale(self.game_surface, (self.screen_width, self.screen_height))
+        self.screen.blit(scaled_surface, (0, 0))
 
         pygame.display.flip()
 
 def main_menu():
     pygame.init() # Inicializar Pygame aquí
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
     pygame.display.set_caption("Menú Principal")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 74)
@@ -291,30 +320,40 @@ def main_menu():
     buttons = [
         Button(300, 250, 200, 50, 'Fácil', (34, 139, 34), (46, 189, 46)),
         Button(300, 320, 200, 50, 'Normal', (255, 165, 0), (255, 195, 50)),
-        Button(300, 390, 200, 50, 'Difícil', (178, 34, 34), (205, 50, 50))
+        Button(300, 390, 200, 50, 'Difícil', (178, 34, 34), (205, 50, 50)),
+        Button(300, 460, 200, 50, 'Salir', (150, 0, 0), (200, 0, 0)) # Salir button
     ]
 
     menu_running = True
+    menu_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT)) # Add this line
     while menu_running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                menu_running = False # Set menu_running to False to exit cleanly
+            if event.type == pygame.VIDEORESIZE:
+                screen = pygame.display.set_mode(event.size, pygame.RESIZABLE)
+
             for button in buttons:
                 if button.is_clicked(event):
-                    game = Game(difficulty=button.text)
-                    game.run()
-                    # Cuando el juego termina, volvemos al menú
-                    # (o podríamos salir, pero volver al menú es más amigable)
-                    # Para salir, simplemente quita el bucle y la llamada a game.run()
+                    if button.text == 'Salir': # Handle Salir button click
+                        menu_running = False
+                    else:
+                        game = Game(difficulty=button.text)
+                        game.run()
 
-        screen.fill(BACKGROUND_COLOR)
-        screen.blit(title_text, title_rect)
+        menu_surface.fill(BACKGROUND_COLOR) # Draw to menu_surface
+        menu_surface.blit(title_text, title_rect) # Draw to menu_surface
         for button in buttons:
-            button.draw(screen)
+            button.draw(menu_surface) # Draw to menu_surface
         
+        # Scale and blit the menu_surface to the actual screen
+        scaled_menu_surface = pygame.transform.scale(menu_surface, screen.get_size())
+        screen.blit(scaled_menu_surface, (0, 0))
+
         pygame.display.flip()
         clock.tick(60)
+    pygame.quit() # Quit pygame when menu loop ends
+    sys.exit() # Exit system when menu loop ends
 
 if __name__ == "__main__":
     main_menu()
