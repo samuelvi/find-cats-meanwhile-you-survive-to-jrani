@@ -7,6 +7,7 @@ from src.items import Cat, Key, Platform, Stair, Door
 from src.enemy import Enemy
 from src.ui import Button
 from src.sound_manager import SoundManager
+from src.furniture import Bed, Sofa, Drawer
 
 # --- Constantes ---
 SCREEN_WIDTH = 800
@@ -44,6 +45,8 @@ class Game:
             3: Level(LEVEL_3_WALLS)
         }
         self.current_floor = 1
+
+        self.furniture_by_floor = {}
 
         self.floor_surface = self._create_floor_surface()
         self.setup_floor_objects()
@@ -130,6 +133,13 @@ class Game:
             2: [],
             3: [Enemy(700, 100)]
         }
+
+        self.furniture_by_floor = {
+            1: [Bed(200, 400), Sofa(500, 400), Drawer(150, 100)],
+            2: [Sofa(200, 100), Drawer(600, 400)],
+            3: [Bed(300, 200), Sofa(500, 200)]
+        }
+
         print(f"Enemies by floor AFTER POPULATION: {self.enemies_by_floor}") # Debug print
         # Aplicar velocidad de Jrani
         for floor_enemies in self.enemies_by_floor.values():
@@ -152,8 +162,9 @@ class Game:
         self.enemies = pygame.sprite.Group(*self.enemies_by_floor.get(self.current_floor, []))
         self.stairs = pygame.sprite.Group(*self.stairs_by_floor.get(self.current_floor, []))
         self.doors = pygame.sprite.Group(*self.doors_by_floor.get(self.current_floor, []))
+        self.furniture = pygame.sprite.Group(*self.furniture_by_floor.get(self.current_floor, []))
 
-        self.all_sprites.add(self.cats, self.enemies, self.stairs, self.doors)
+        self.all_sprites.add(self.cats, self.enemies, self.stairs, self.doors, self.furniture)
         
         if self.current_floor == 1:
             self.all_sprites.add(self.platform)
@@ -195,7 +206,7 @@ class Game:
                         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
     def update(self):
-        current_level_walls = self.levels[self.current_floor].walls
+        current_level_walls = self.levels[self.current_floor].walls + [f.rect for f in self.furniture]
         keys = pygame.key.get_pressed()
         
         self.player.update(keys, current_level_walls)

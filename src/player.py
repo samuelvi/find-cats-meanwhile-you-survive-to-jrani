@@ -8,7 +8,7 @@ class Player(pygame.sprite.Sprite):
         # --- Colores ---
         SKIN_COLOR = (255, 224, 189)  # Tono de piel
         HAIR_COLOR = (110, 72, 39)    # Marrón
-        SHIRT_COLOR = (50, 100, 200) # Azul
+        SHIRT_COLOR = (200, 0, 0) # Rojo
         BLACK = (0, 0, 0)
 
         # --- Dibujo ---
