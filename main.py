@@ -7,8 +7,8 @@ from src.items import Cat, Key, Platform, Door, TransitionDoor
 from src.enemy import Enemy
 from src.ui import Button
 from src.sound_manager import SoundManager
-from src.furniture import Bed, Sofa, Drawer
-from src.decoration import Painting, Rug, Window
+from src.furniture import Bed, Sofa, Drawer, Chair, Table, Lamp
+from src.decoration import Painting, Rug, Window, Plant
 
 # --- Constantes ---
 SCREEN_WIDTH = 800
@@ -19,7 +19,8 @@ BACKGROUND_COLOR = (0, 0, 0)
 DIFFICULTY_SETTINGS = {
     'Fácil': {'lives': 8, 'jrani_speed': 2},
     'Normal': {'lives': 5, 'jrani_speed': 3},
-    'Difícil': {'lives': 3, 'jrani_speed': 4}
+    'Difícil': {'lives': 3, 'jrani_speed': 4},
+    'Práctica': {'lives': 999}
 }
 
 class Game:
@@ -37,10 +38,12 @@ class Game:
 
         self.sound_manager = SoundManager()
 
+        self.is_practice = difficulty == 'Práctica'
+
         settings = DIFFICULTY_SETTINGS[difficulty]
         self.player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.player_lives = settings['lives']
-        self.jrani_speed = settings['jrani_speed']
+        self.jrani_speed = settings.get('jrani_speed', 0)
         
         self.levels = {
             1: Level(LEVEL_1_WALLS),
@@ -123,22 +126,24 @@ class Game:
         self.cats_collected = 0
 
         # Jrani por piso
-        self.enemies_by_floor = {
-            1: [Enemy(100, 100)],
-            2: [Enemy(400, 300)],
-            3: [Enemy(700, 100)]
-        }
+        self.enemies_by_floor = {1: [], 2: [], 3: []}
+        if not self.is_practice:
+            self.enemies_by_floor = {
+                1: [Enemy(100, 100)],
+                2: [Enemy(400, 300)],
+                3: [Enemy(700, 100)]
+            }
 
         self.furniture_by_floor = {
-            1: [Bed(200, 400), Sofa(500, 400), Drawer(150, 100)],
-            2: [Sofa(200, 100), Drawer(600, 400)],
-            3: [Bed(300, 200), Sofa(500, 200)]
+            1: [Bed(200, 400), Sofa(500, 400), Drawer(150, 100), Table(350, 100), Chair(300, 100), Chair(420, 100), Lamp(700, 500)],
+            2: [Sofa(200, 100), Drawer(600, 400), Table(400, 100), Chair(350, 100)],
+            3: [Bed(300, 200), Sofa(500, 200), Table(400, 400), Lamp(100, 400)]
         }
 
         self.decorations_by_floor = {
-            1: [Painting(200, 15), Painting(400, 15), Rug(300, 300), Window(600, 15)],
-            2: [Painting(200, 15), Rug(500, 400), Window(450, 15)],
-            3: [Painting(200, 15), Painting(600, 15), Rug(200, 400), Window(400, 510)]
+            1: [Painting(200, 15), Painting(400, 15), Rug(300, 300), Window(600, 15), Plant(20, 20)],
+            2: [Painting(200, 15), Rug(500, 400), Window(450, 15), Plant(700, 20)],
+            3: [Painting(200, 15), Painting(600, 15), Rug(200, 400), Window(400, 510), Plant(750, 450)]
         }
 
         print(f"Enemies by floor AFTER POPULATION: {self.enemies_by_floor}") # Debug print
@@ -236,7 +241,7 @@ class Game:
             print(f"Gatos recogidos: {self.cats_collected}/{self.total_cats}")
 
         # Colisión con Jrani
-        if pygame.sprite.spritecollide(self.player, self.enemies, False):
+        if not self.is_practice and pygame.sprite.spritecollide(self.player, self.enemies, False):
             self.sound_manager.play_sfx('get_caught')
             self.player_lives -= 1
             print(f"¡Jrani te ha atrapado! Vidas restantes: {self.player_lives}")
@@ -318,33 +323,43 @@ def main_menu():
     title_rect = title_text.get_rect(center=(SCREEN_WIDTH / 2, 150))
 
     buttons = [
-        Button(300, 250, 200, 50, 'Fácil', (34, 139, 34), (46, 189, 46)),
-        Button(300, 320, 200, 50, 'Normal', (255, 165, 0), (255, 195, 50)),
-        Button(300, 390, 200, 50, 'Difícil', (178, 34, 34), (205, 50, 50)),
-        Button(300, 460, 200, 50, 'Salir', (150, 0, 0), (200, 0, 0)) # Salir button
+        Button(300, 220, 200, 50, 'Práctica', (0, 150, 150), (0, 200, 200)),
+        Button(300, 290, 200, 50, 'Fácil', (34, 139, 34), (46, 189, 46)),
+        Button(300, 360, 200, 50, 'Normal', (255, 165, 0), (255, 195, 50)),
+        Button(300, 430, 200, 50, 'Difícil', (178, 34, 34), (205, 50, 50)),
+        Button(300, 530, 200, 50, 'Salir', (150, 0, 0), (200, 0, 0))
     ]
 
     menu_running = True
     menu_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT)) # Add this line
     while menu_running:
+        screen_width, screen_height = screen.get_size()
+        scale_x = SCREEN_WIDTH / screen_width
+        scale_y = SCREEN_HEIGHT / screen_height
+        
+        mouse_pos = pygame.mouse.get_pos()
+        scaled_mouse_pos = (mouse_pos[0] * scale_x, mouse_pos[1] * scale_y)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 menu_running = False # Set menu_running to False to exit cleanly
             if event.type == pygame.VIDEORESIZE:
                 screen = pygame.display.set_mode(event.size, pygame.RESIZABLE)
 
-            for button in buttons:
-                if button.is_clicked(event):
-                    if button.text == 'Salir': # Handle Salir button click
-                        menu_running = False
-                    else:
-                        game = Game(difficulty=button.text)
-                        game.run()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                scaled_event_pos = (event.pos[0] * scale_x, event.pos[1] * scale_y)
+                for button in buttons:
+                    if button.is_clicked(event, mouse_pos=scaled_event_pos):
+                        if button.text == 'Salir': # Handle Salir button click
+                            menu_running = False
+                        else:
+                            game = Game(difficulty=button.text)
+                            game.run()
 
         menu_surface.fill(BACKGROUND_COLOR) # Draw to menu_surface
         menu_surface.blit(title_text, title_rect) # Draw to menu_surface
         for button in buttons:
-            button.draw(menu_surface) # Draw to menu_surface
+            button.draw(menu_surface, mouse_pos=scaled_mouse_pos) # Draw to menu_surface
         
         # Scale and blit the menu_surface to the actual screen
         scaled_menu_surface = pygame.transform.scale(menu_surface, screen.get_size())
