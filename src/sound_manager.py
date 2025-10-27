@@ -7,7 +7,8 @@ class SoundManager:
             'collect_cat': self.create_arpeggio([440, 554, 659], 0.05),
             'get_caught': self.create_arpeggio([330, 220, 165], 0.07),
             'key_spawn': self.create_arpeggio([523, 659, 784, 1046], 0.08),
-            'win': self.create_arpeggio([523, 659, 784, 1046, 1046], 0.1)
+            'win': self.create_arpeggio([523, 659, 784, 1046, 1046], 0.1),
+            'i_see_you': self.create_arpeggio([261, 392, 392, 440, 392, 493, 523], 0.08)
         }
         self.background_music_loaded = False
         self.chase_music_loaded = False

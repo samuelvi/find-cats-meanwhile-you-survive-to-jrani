@@ -2,7 +2,7 @@ import pygame
 import math
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, sound_manager):
         super().__init__()
         self.image = pygame.Surface([35, 35], pygame.SRCALPHA)
         
@@ -29,6 +29,8 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.topleft = (x, y)
         self.speed = 2 # Jrani es más lenta que el jugador... por ahora
         self.is_chasing = False
+        self.sound_manager = sound_manager
+        self.say_i_see_you_timer = 0
 
     def update(self, player, walls):
         # Lógica de persecución simple
@@ -47,6 +49,12 @@ class Enemy(pygame.sprite.Sprite):
             self.handle_collision(dx, 0, walls)
             self.rect.y += dy * self.speed
             self.handle_collision(0, dy, walls)
+
+            # Decir "I see you" de vez en cuando
+            self.say_i_see_you_timer += 1
+            if self.say_i_see_you_timer > 180: # 3 segundos a 60 FPS
+                self.sound_manager.play_sfx('i_see_you')
+                self.say_i_see_you_timer = 0
         else:
             self.is_chasing = False
 

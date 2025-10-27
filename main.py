@@ -129,9 +129,9 @@ class Game:
         self.enemies_by_floor = {1: [], 2: [], 3: []}
         if not self.is_practice:
             self.enemies_by_floor = {
-                1: [Enemy(100, 100)],
-                2: [Enemy(400, 300)],
-                3: [Enemy(700, 100)]
+                1: [Enemy(100, 100, self.sound_manager)],
+                2: [Enemy(400, 300, self.sound_manager)],
+                3: [Enemy(700, 100, self.sound_manager)]
             }
 
         self.furniture_by_floor = {

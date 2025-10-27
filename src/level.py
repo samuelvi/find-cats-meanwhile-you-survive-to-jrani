@@ -29,17 +29,26 @@ class Level:
         self.walls = []
         for wall_pos in wall_layout:
             self.walls.append(pygame.Rect(wall_pos))
-        self.wall_texture = pygame.image.load("assets/wall_texture.png").convert_alpha()
+        self.wall_texture = pygame.image.load("assets/wall_texture.png").convert()
+        self.floor_texture = pygame.image.load("assets/floor_texture.png").convert()
 
     def draw(self, surface):
+        # Draw the floor by tiling the texture
+        for x in range(0, surface.get_width(), self.floor_texture.get_width()):
+            for y in range(0, surface.get_height(), self.floor_texture.get_height()):
+                surface.blit(self.floor_texture, (x, y))
+
         WALL_HIGHLIGHT = (130, 110, 100)   # Borde superior iluminado
         WALL_SHADOW = (50, 40, 35)         # Sombra inferior
 
         for wall in self.walls:
-            # Blit the wall texture
+            # Tile the wall texture
             for x in range(wall.left, wall.right, self.wall_texture.get_width()):
                 for y in range(wall.top, wall.bottom, self.wall_texture.get_height()):
-                    surface.blit(self.wall_texture, (x, y))
+                    clip_rect = pygame.Rect(x, y, self.wall_texture.get_width(), self.wall_texture.get_height())
+                    clip_rect = clip_rect.clip(wall)
+                    sub_texture = self.wall_texture.subsurface(pygame.Rect(0, 0, clip_rect.width, clip_rect.height))
+                    surface.blit(sub_texture, clip_rect.topleft)
 
             # Efecto 3D con bordes claros y oscuros
             pygame.draw.line(surface, WALL_HIGHLIGHT, wall.topleft, wall.topright, 2)
