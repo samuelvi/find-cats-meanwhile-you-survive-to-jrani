@@ -1,0 +1,20 @@
+name: findcats-nokia-n80-port
+
+x-toolchain: &toolchain
+  image: findcats-j2me:6.0.119
+  platform: linux/amd64
+  build:
+    context: .
+    dockerfile: docker/j2me/Dockerfile
+  working_dir: /workspace
+  network_mode: none
+  volumes:
+    - .:/workspace
+
+services:
+  build:
+    <<: *toolchain
+    command: [package]
+  test:
+    <<: *toolchain
+    command: [test]

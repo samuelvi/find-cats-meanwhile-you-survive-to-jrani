@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="FindCatsN80" default="package" basedir=".">
+    <property name="toolchain" location="/opt/j2me"/>
+    <property name="build" location="build"/>
+    <property name="dist" location="../dist"/>
+    <property name="apis" value="${toolchain}/cldcapi11.jar:${toolchain}/midpapi20.jar"/>
+
+    <target name="clean">
+        <delete dir="${build}"/>
+        <delete file="${dist}/FindCatsProbe.jar"/>
+        <delete file="${dist}/FindCatsProbe.jad"/>
+    </target>
+
+    <target name="compile" depends="clean">
+        <mkdir dir="${build}/classes"/>
+        <mkdir dir="${dist}"/>
+        <javac srcdir="src" destdir="${build}/classes" source="1.3" target="1.2"
+               bootclasspath="${apis}" includeantruntime="false" encoding="UTF-8" debug="true"/>
+        <copy file="../assets/plant.png" tofile="${build}/classes/probe.png"/>
+        <jar destfile="${build}/raw.jar" basedir="${build}/classes" manifest="packaging/MANIFEST.MF"/>
+    </target>
+
+    <target name="package" depends="compile">
+        <java jar="${toolchain}/proguard.jar" fork="true" failonerror="true">
+            <arg value="@packaging/proguard.pro"/>
+        </java>
+        <exec executable="python3" failonerror="true">
+            <arg value="tools/package_midlet.py"/>
+            <arg value="${dist}/FindCatsProbe.jar"/>
+        </exec>
+        <exec executable="python3" failonerror="true">
+            <arg value="tools/verify_package.py"/>
+            <arg value="${dist}/FindCatsProbe.jar"/>
+        </exec>
+    </target>
+
+    <target name="test-model">
+        <mkdir dir="${build}/tests"/>
+        <javac srcdir="src:tests/java" destdir="${build}/tests" includeantruntime="false"
+               encoding="UTF-8" includes="ProbeState.java,ProbeStateTest.java"/>
+        <java classname="ProbeStateTest" classpath="${build}/tests" fork="true" failonerror="true"/>
+    </target>
+
+    <target name="test" depends="package,test-model">
+        <exec executable="python3" failonerror="true">
+            <arg value="-m"/><arg value="unittest"/><arg value="discover"/>
+            <arg value="-s"/><arg value="tests"/><arg value="-v"/>
+        </exec>
+    </target>
+</project>

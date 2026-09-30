@@ -1,0 +1,11 @@
+-injars ../build/raw.jar
+-outjars ../../dist/FindCatsProbe.jar
+-libraryjars /opt/j2me/cldcapi11.jar
+-libraryjars /opt/j2me/midpapi20.jar
+-microedition
+-target 1.2
+-dontshrink
+-dontoptimize
+-dontobfuscate
+-keepattributes SourceFile,LineNumberTable
+-keep public class FindCatsProbeMidlet { public <init>(); }
