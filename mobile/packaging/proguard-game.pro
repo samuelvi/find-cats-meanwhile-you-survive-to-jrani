@@ -1,0 +1,11 @@
+-injars ../build/game-raw.jar
+-outjars ../../dist/FindCats.jar
+-libraryjars /opt/j2me/cldcapi11.jar
+-libraryjars /opt/j2me/midpapi20.jar
+-microedition
+-target 1.2
+-dontshrink
+-dontoptimize
+-dontobfuscate
+-keepattributes SourceFile,LineNumberTable
+-keep public class FindCatsMidlet { public <init>(); }

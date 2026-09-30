@@ -11,10 +11,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PackageTest(unittest.TestCase):
+    jar_name = "FindCatsProbe.jar"
+    entry_point = "FindCatsProbeMidlet.class"
+    logic_class = "ProbeState.class"
+    icon = "probe.png"
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.jar = Path(self.temp.name) / "FindCatsProbe.jar"
+        self.jar = Path(self.temp.name) / self.jar_name
         self.jad = self.jar.with_suffix(".jad")
         for target in (self.jar, self.jad):
             shutil.copyfile(ROOT.parent / "dist" / target.name, target)
@@ -50,18 +55,18 @@ class PackageTest(unittest.TestCase):
             self.verifier.verify(self.jar)
 
     def test_missing_entry_point_is_rejected(self):
-        self.rewrite(lambda files: files.pop("FindCatsProbeMidlet.class"))
+        self.rewrite(lambda files: files.pop(self.entry_point))
         with self.assertRaisesRegex(ValueError, "entry point"):
             self.verifier.verify(self.jar)
 
     def test_missing_png_is_rejected(self):
-        self.rewrite(lambda files: files.pop("probe.png"))
-        with self.assertRaisesRegex(ValueError, "probe.png"):
+        self.rewrite(lambda files: files.pop(self.icon))
+        with self.assertRaisesRegex(ValueError, self.icon):
             self.verifier.verify(self.jar)
 
     def test_desktop_class_version_is_rejected(self):
         def newer_bytecode(files):
-            name = "FindCatsProbeMidlet.class"
+            name = self.entry_point
             value = bytearray(files[name])
             value[6:8] = (52).to_bytes(2, "big")
             files[name] = bytes(value)
@@ -85,7 +90,7 @@ class PackageTest(unittest.TestCase):
 
     def test_partially_unpreverified_package_is_rejected(self):
         def remove_one_class_maps(files):
-            files["ProbeState.class"] = files["ProbeState.class"].replace(b"StackMap", b"NotAMap!")
+            files[self.logic_class] = files[self.logic_class].replace(b"StackMap", b"NotAMap!")
         self.rewrite(remove_one_class_maps)
         with self.assertRaisesRegex(ValueError, "StackMap"):
             self.verifier.verify(self.jar)
@@ -114,6 +119,20 @@ class PackageTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("java.io", result.stderr)
         self.assertIn("File", result.stderr)
+
+
+class GamePackageTest(PackageTest):
+    jar_name = "FindCats.jar"
+    entry_point = "FindCatsMidlet.class"
+    logic_class = "GameWorld.class"
+    icon = "icon.png"
+
+    def test_game_package_contains_game_instead_of_probe(self):
+        with zipfile.ZipFile(self.jar) as archive:
+            self.assertIn("GameWorld.class", archive.namelist())
+            self.assertIn("GameCanvasView.class", archive.namelist())
+            self.assertNotIn("FindCatsProbeMidlet.class", archive.namelist())
+            self.assertNotIn("ProbeCanvas.class", archive.namelist())
 
 
 if __name__ == "__main__":

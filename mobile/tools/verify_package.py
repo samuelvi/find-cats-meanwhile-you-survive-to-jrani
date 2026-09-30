@@ -1,4 +1,4 @@
-"""Check the generated probe package. Actual CLDC verification is done by ProGuard."""
+"""Check game and diagnostic packages. CLDC preverification is done by ProGuard."""
 from pathlib import Path
 import re
 import struct
@@ -13,6 +13,21 @@ METADATA = {
     "MicroEdition-Configuration": "CLDC-1.1",
     "MicroEdition-Profile": "MIDP-2.0",
 }
+
+GAME_METADATA = dict(METADATA, **{
+    "MIDlet-Name": "Find Cats",
+    "MIDlet-Version": "1.0.0",
+    "MIDlet-1": "Find Cats, /icon.png, FindCatsMidlet",
+})
+
+
+def metadata_for(jar):
+    name = Path(jar).name
+    if name == "FindCats.jar":
+        return GAME_METADATA
+    if name == "FindCatsProbe.jar":
+        return METADATA
+    raise ValueError("Unknown MIDlet package: " + name)
 
 
 def attributes(data):
@@ -160,6 +175,7 @@ def class_info(data):
 
 def verify(jar):
     jar = Path(jar)
+    metadata = metadata_for(jar)
     jad = attributes(jar.with_suffix(".jad").read_bytes())
     if jad.get("MIDlet-Jar-Size") != str(jar.stat().st_size):
         raise ValueError("JAD size does not match final JAR size")
@@ -171,13 +187,15 @@ def verify(jar):
         if len(names) != len(set(names)):
             raise ValueError("Duplicate JAR entries")
         manifest = attributes(archive.read("META-INF/MANIFEST.MF"))
-        for key, expected in METADATA.items():
+        for key, expected in metadata.items():
             if manifest.get(key) != expected or jad.get(key) != expected:
                 raise ValueError("Invalid or inconsistent " + key)
-        if "FindCatsProbeMidlet.class" not in names:
+        _, icon, entry_point = [item.strip() for item in metadata["MIDlet-1"].split(",")]
+        icon = icon.lstrip("/")
+        if entry_point.replace(".", "/") + ".class" not in names:
             raise ValueError("Missing MIDlet entry point")
-        if "probe.png" not in names or not archive.read("probe.png").startswith(b"\x89PNG\r\n\x1a\n"):
-            raise ValueError("Missing or invalid probe.png")
+        if icon not in names or not archive.read(icon).startswith(b"\x89PNG\r\n\x1a\n"):
+            raise ValueError("Missing or invalid " + icon)
         if any(name.startswith(("java/", "javax/")) for name in names):
             raise ValueError("Bundled platform classes are forbidden")
 
@@ -200,7 +218,7 @@ def verify(jar):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("Usage: verify_package.py path/to/FindCatsProbe.jar")
+        sys.exit("Usage: verify_package.py path/to/FindCats.jar (or FindCatsProbe.jar)")
     try:
         count = verify(sys.argv[1])
         print("PASS: MIDP 2.0 / CLDC 1.1 package; %d CLDC StackMap attributes" % count)

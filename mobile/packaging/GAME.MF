@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+MIDlet-Name: Find Cats
+MIDlet-Version: 1.0.0
+MIDlet-Vendor: TeteSam
+MIDlet-1: Find Cats, /icon.png, FindCatsMidlet
+MicroEdition-Configuration: CLDC-1.1
+MicroEdition-Profile: MIDP-2.0

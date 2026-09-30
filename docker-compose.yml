@@ -1,4 +1,4 @@
-name: findcats-nokia-n80-port
+name: findcats-nokia-n80-game
 
 x-toolchain: &toolchain
   image: findcats-j2me:6.0.119

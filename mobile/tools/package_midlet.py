@@ -3,15 +3,16 @@ from pathlib import Path
 import sys
 import zipfile
 
-from verify_package import METADATA, attributes
+from verify_package import metadata_for, attributes
 
 
 def package(jar):
     jar = Path(jar)
+    expected_metadata = metadata_for(jar)
     with zipfile.ZipFile(jar) as source:
         files = {name: source.read(name) for name in source.namelist() if not name.endswith("/")}
     manifest = attributes(files["META-INF/MANIFEST.MF"])
-    for key, expected in METADATA.items():
+    for key, expected in expected_metadata.items():
         if manifest.get(key) != expected:
             raise ValueError("Invalid manifest " + key)
     temporary = jar.with_suffix(".jar.tmp")
@@ -26,7 +27,7 @@ def package(jar):
         temporary.replace(jar)
     finally:
         temporary.unlink(missing_ok=True)
-    metadata = {key: manifest[key] for key in METADATA}
+    metadata = {key: manifest[key] for key in expected_metadata}
     metadata["MIDlet-Jar-URL"] = jar.name
     metadata["MIDlet-Jar-Size"] = str(jar.stat().st_size)
     jar.with_suffix(".jad").write_bytes(
@@ -37,5 +38,5 @@ def package(jar):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("Usage: package_midlet.py path/to/FindCatsProbe.jar")
+        sys.exit("Usage: package_midlet.py path/to/FindCats.jar (or FindCatsProbe.jar)")
     package(sys.argv[1])

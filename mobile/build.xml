@@ -9,6 +9,8 @@
         <delete dir="${build}"/>
         <delete file="${dist}/FindCatsProbe.jar"/>
         <delete file="${dist}/FindCatsProbe.jad"/>
+        <delete file="${dist}/FindCats.jar"/>
+        <delete file="${dist}/FindCats.jad"/>
     </target>
 
     <target name="compile" depends="clean">
@@ -17,7 +19,13 @@
         <javac srcdir="src" destdir="${build}/classes" source="1.3" target="1.2"
                bootclasspath="${apis}" includeantruntime="false" encoding="UTF-8" debug="true"/>
         <copy file="../assets/plant.png" tofile="${build}/classes/probe.png"/>
-        <jar destfile="${build}/raw.jar" basedir="${build}/classes" manifest="packaging/MANIFEST.MF"/>
+        <exec executable="python3" failonerror="true">
+            <arg value="tools/make_icon.py"/><arg value="${build}/classes/icon.png"/>
+        </exec>
+        <jar destfile="${build}/raw.jar" basedir="${build}/classes" manifest="packaging/MANIFEST.MF"
+             includes="Probe*.class,FindCatsProbeMidlet.class,probe.png"/>
+        <jar destfile="${build}/game-raw.jar" basedir="${build}/classes" manifest="packaging/GAME.MF"
+             excludes="Probe*.class,FindCatsProbeMidlet.class,probe.png"/>
     </target>
 
     <target name="package" depends="compile">
@@ -32,6 +40,15 @@
             <arg value="tools/verify_package.py"/>
             <arg value="${dist}/FindCatsProbe.jar"/>
         </exec>
+        <java jar="${toolchain}/proguard.jar" fork="true" failonerror="true">
+            <arg value="@packaging/proguard-game.pro"/>
+        </java>
+        <exec executable="python3" failonerror="true">
+            <arg value="tools/package_midlet.py"/><arg value="${dist}/FindCats.jar"/>
+        </exec>
+        <exec executable="python3" failonerror="true">
+            <arg value="tools/verify_package.py"/><arg value="${dist}/FindCats.jar"/>
+        </exec>
     </target>
 
     <target name="test-model">
@@ -41,7 +58,27 @@
         <java classname="ProbeStateTest" classpath="${build}/tests" fork="true" failonerror="true"/>
     </target>
 
-    <target name="test" depends="package,test-model">
+    <target name="test-world">
+        <mkdir dir="${build}/tests"/>
+        <javac srcdir="src:tests/java" destdir="${build}/tests" includeantruntime="false"
+               encoding="UTF-8" includes="GameWorld.java,LevelData.java,Actor.java,GameLayout.java,GameSession.java,GameWorldTest.java,GameSessionTest.java"/>
+        <java classname="GameWorldTest" classpath="${build}/tests" fork="true" failonerror="true"/>
+        <java classname="GameSessionTest" classpath="${build}/tests" fork="true" failonerror="true"/>
+    </target>
+
+    <target name="test-render">
+        <mkdir dir="${build}/render"/>
+        <mkdir dir="${dist}/preview"/>
+        <javac srcdir="src:tests/render" destdir="${build}/render" includeantruntime="false"
+               encoding="UTF-8" includes="GameWorld.java,LevelData.java,Actor.java,GameLayout.java,GameSession.java,GameArt.java,GameRenderer.java,RenderSmokeTest.java,javax/**/*.java"/>
+        <java classname="RenderSmokeTest" classpath="${build}/render" fork="true" failonerror="true">
+            <jvmarg value="-Djava.awt.headless=true"/>
+            <jvmarg value="-Dsun.java2d.fontpath=/usr/share/fonts/truetype/dejavu"/>
+            <arg value="${dist}/preview"/>
+        </java>
+    </target>
+
+    <target name="test" depends="package,test-model,test-world,test-render">
         <exec executable="python3" failonerror="true">
             <arg value="-m"/><arg value="unittest"/><arg value="discover"/>
             <arg value="-s"/><arg value="tests"/><arg value="-v"/>
